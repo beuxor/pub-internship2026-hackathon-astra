@@ -1,0 +1,10 @@
+default_connection_name = "dev"
+
+[connections.dev]
+account = "ON44798-DS_5DAYSINTERNSHIP_2026"
+user = "YOUR_USERNAME"          # SnowflakeのユーザーIDを設定
+role = "INTERNSHIP_MEMBER"
+authenticator = "OAUTH_AUTHORIZATION_CODE"
+client_store_temporary_credential = true
+oauth_client_id = "LOCAL_APPLICATION"
+oauth_client_secret = "LOCAL_APPLICATION"

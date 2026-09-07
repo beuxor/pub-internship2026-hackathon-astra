@@ -1,0 +1,24 @@
+{
+  "name": "ipj-internship2026-pretest",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "containerEnv": {
+    "SNOWFLAKE_HOME": "${containerWorkspaceFolder}/.snowflake"
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "postStartCommand": "chmod 700 .snowflake && chmod 600 .snowflake/config.toml",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "snowflake.snowflake-vsc",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true
+      }
+    }
+  }
+}

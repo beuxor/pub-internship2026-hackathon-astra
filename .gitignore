@@ -1,0 +1,8 @@
+.env
+
+.cortex/plans/
+.snowflake/*
+!.snowflake/cortex/
+.snowflake/cortex/*
+!.snowflake/cortex/settings.json
+!.snowflake/config.toml.example
