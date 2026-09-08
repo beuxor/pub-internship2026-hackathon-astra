@@ -39,12 +39,17 @@ AIエージェント（Snowflake CoCo / Claude Code）は、コード作成や�
 **公式スキル `/snowflake-apps` の流儀に必ず従うこと。**
 - プロジェクトのスキャフォールディング、ディレクトリ構造、マニフェスト（`app.yml`）、Snowflake クエリヘルパー（`lib/snowflake.ts`）、およびデプロイ（`snow app deploy`）は、Snowflake 公式の `/snowflake-apps` スキルを最優先とし、その手順と規約に従う。
 - 独自のNext.jsテンプレートや外部フレームワークでApp Runtimeの基本構成を上書き・バイパスしない。
-- 大福帳データ（100万行規模）をクライアントにそのまま送らない。集計・フィルタ処理は必ず Snowflake 側で完結させ、パラメータ化クエリを使用する。
+- **デプロイ先データベースの厳守**:
+  - 個人データベース（`USER$<username>`）にデプロイすると他ロールや審査員への共有（`GRANT USAGE`）ができません。`app.yml` の配置先には必ず共有データベース（`TEAM_A_DB`）および指定のスキーマ（`DEVELOPMENT` 等）を設定する。
+- **データクエリとパフォーマンス**:
+  - 大福帳データ（100万行規模）をクライアントにそのまま送らない。集計・フィルタ処理は必ず Snowflake 側で完結させ、パラメータ化クエリを使用する。
+- **依存パッケージの最小化**:
+  - Snowflake リモートビルドのタイムアウトや失敗を防ぐため、npm 依存パッケージは必要最小限に抑える。
 
 ## 6. 環境方針 & Git ワークフロー
 - **パッケージマネージャー**:
   - Pythonツール・Snowflake CLI: `uv`（`uv run snow ...`）を使用し、グローバル環境を汚さない。
-  - Node.js / TypeScript: `bun`（`bun install`, `bun run dev`, `bunx`）を使用する。
+  - Node.js / Web アプリ: Snowflake App Runtime のリモートビルドパイプライン（`npm ci` / `npm run build`）およびチームの Codespaces 環境との互換性を確保するため、**`npm`** を標準とする（`package.json` および `package-lock.json` を管理する）。
 - **Git 規約**:
   - `main` ブランチへの直接コミット・プッシュは禁止。必ず機能ブランチ（`feature/<name>`）で作業し、PRを作成する。
   - `.env`、認証鍵ファイル（`*.p8`）、Snowflake接続トークン、個人データのエクスポート結果は絶対にコミットしない。
