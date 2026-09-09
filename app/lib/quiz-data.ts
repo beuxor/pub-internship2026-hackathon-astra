@@ -51,12 +51,20 @@ export async function generateQuestion(params: URLSearchParams = new URLSearchPa
   );
   const row = rows[0];
   if (!row) throw new QuestionError("no_question");
+  let rawCategories: unknown = row.categories;
+  if (typeof rawCategories === "string") {
+    try {
+      rawCategories = JSON.parse(rawCategories);
+    } catch {
+      throw new QuestionError("query_failed");
+    }
+  }
   if (typeof row.questionId !== "string" || !UUID.test(row.questionId) ||
       row.rankingMethod !== "buyer_count" || typeof row.periodStart !== "string" ||
-      typeof row.periodEnd !== "string" || !Array.isArray(row.categories) || row.categories.length !== 5) {
+      typeof row.periodEnd !== "string" || !Array.isArray(rawCategories) || rawCategories.length !== 5) {
     throw new QuestionError("query_failed");
   }
-  const categories = row.categories.map((item: unknown) => {
+  const categories = rawCategories.map((item: unknown) => {
     if (!item || typeof item !== "object" || !("rank" in item) || !("categoryPath" in item) ||
         typeof item.rank !== "number" || typeof item.categoryPath !== "string" || !item.categoryPath.trim()) {
       throw new QuestionError("query_failed");

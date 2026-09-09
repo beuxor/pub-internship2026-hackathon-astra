@@ -21,6 +21,25 @@ describe("出題API", () => {
     expect(query.mock.calls[0][0]).toContain("DAY5_QUIZ_QUESTIONS");
     expect(query.mock.calls[0][1]?.binds).toEqual(["[]"]);
   });
+  it("JSON文字列のTOP5も順位順の公開DTOへ変換する", async () => {
+    query.mockResolvedValue([{ ...row(), categories: JSON.stringify(row().categories) }]);
+    const response = await get();
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.categories).toEqual([1,2,3,4,5].map(rank => ({ rank, categoryPath: `カテゴリ${rank}` })));
+    expect(JSON.stringify(body)).not.toMatch(/buyers|秘密/);
+  });
+  it.each(["broken JSON", "null", "{}", "[]", '[{"rank":1,"categoryPath":"不足"}]'])("不正なJSONカテゴリを公開しない: %s", async categories => {
+    query.mockResolvedValue([{ ...row(), categories }]);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await get();
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ code: "query_failed", error: "問題の取得に失敗しました" });
+    } finally {
+      log.mockRestore();
+    }
+  });
   it("同じIDの再取得はDB検索し、IDをSQLへ埋め込まない", async () => {
     expect((await (await get(`?questionId=${id}`)).json()).questionId).toBe(id);
     expect((await (await get(`?questionId=${id}`)).json()).questionId).toBe(id);
