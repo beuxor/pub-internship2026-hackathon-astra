@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { querySnowflake } from "@/lib/snowflake";
 import { scoreAnswer, type QuizAttributes } from "@/lib/quiz-score";
@@ -129,7 +129,7 @@ function parseCategoryDetails(raw: unknown): AnswerResponse["categoryDetails"] {
 }
 
 export async function POST(
-  request: NextRequest,
+  request: Request,
 ): Promise<NextResponse<AnswerResponse | { error: string }>> {
   let body: unknown;
   try {

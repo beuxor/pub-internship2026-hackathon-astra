@@ -25,7 +25,7 @@ const correctRow = {
 
 /** POST ハンドラは request.json() だけを使うので最小のダブルで足りる */
 function requestWith(body: unknown) {
-  return { json: async () => body } as Parameters<typeof POST>[0];
+  return { json: async () => body } as unknown as Request;
 }
 
 function malformedRequest() {
@@ -33,7 +33,7 @@ function malformedRequest() {
     json: async () => {
       throw new Error("invalid json");
     },
-  } as Parameters<typeof POST>[0];
+  } as unknown as Request;
 }
 
 const validBody = {
