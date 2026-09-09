@@ -62,4 +62,14 @@ export interface AnswerResponse {
     categoryPath: string;
     buyers: number;
   }[];
+  aiOpponent?: {
+    model: string;
+    answer: {
+      ageBand: AgeBand;
+      gender: Gender;
+      marriageStatus: MarriageStatus;
+    };
+    matchCount: number;
+    reasonHypothesis: string;
+  };
 }

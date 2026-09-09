@@ -30,7 +30,8 @@ const Q3_CORRECT_ANSWER = `
       ANSWER_GENDER        AS "correctGender",
       ANSWER_MARRIAGE      AS "correctMarriageStatus",
       ANSWER_GROUP_SIZE    AS "correctGroupSize",
-      TOP5                 AS "categoryDetails"
+      TOP5                 AS "categoryDetails",
+      DATA_VERSION         AS "dataVersion"
   FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS
   WHERE IS_ACTIVE
     AND QUESTION_ID = ?
@@ -50,6 +51,21 @@ const Q4_ANSWER_GROUP_SIZE = `
     AND (FLOOR(AGE / 10) * 10)::VARCHAR || '代' = ?
     AND GENDER_NAME                             = ?
     AND MARRIAGE_STATUS                         = ?
+`;
+
+const Q5_AI_ANSWER = `
+  SELECT
+      MODEL        AS "model",
+      AI_AGE_BAND  AS "aiAgeBand",
+      AI_GENDER    AS "aiGender",
+      AI_MARRIAGE  AS "aiMarriage",
+      AI_REASON    AS "aiReason"
+  FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_AI_ANSWERS
+  WHERE ANSWER_AGE_BAND = ?
+    AND ANSWER_GENDER   = ?
+    AND ANSWER_MARRIAGE = ?
+    AND SOURCE_DATA_VERSION = ?
+  LIMIT 1
 `;
 
 function isAgeBand(value: unknown): value is AgeBand {
@@ -191,6 +207,49 @@ export async function POST(
 
     const { match, matchCount } = scoreAnswer(answer, correct);
 
+    let aiOpponent: AnswerResponse["aiOpponent"] = undefined;
+    try {
+      const aiRows = (await querySnowflake(Q5_AI_ANSWER, {
+        binds: [
+          correct.ageBand,
+          correct.gender,
+          correct.marriageStatus,
+          String(row.dataVersion ?? "v1"),
+        ],
+        warehouse: WAREHOUSE,
+      })) as Array<{
+        model: string;
+        aiAgeBand: string;
+        aiGender: string;
+        aiMarriage: string;
+        aiReason: string;
+      }>;
+
+      if (
+        aiRows.length > 0 &&
+        isAgeBand(aiRows[0].aiAgeBand) &&
+        isGender(aiRows[0].aiGender) &&
+        isMarriageStatus(aiRows[0].aiMarriage)
+      ) {
+        const ai = aiRows[0];
+        const aiAgeBand = ai.aiAgeBand as AgeBand;
+        const aiGender = ai.aiGender as Gender;
+        const aiMarriage = ai.aiMarriage as MarriageStatus;
+        const aiScore = scoreAnswer(
+          { ageBand: aiAgeBand, gender: aiGender, marriageStatus: aiMarriage },
+          correct,
+        );
+        aiOpponent = {
+          model: ai.model,
+          answer: { ageBand: aiAgeBand, gender: aiGender, marriageStatus: aiMarriage },
+          matchCount: aiScore.matchCount,
+          reasonHypothesis: ai.aiReason,
+        };
+      }
+    } catch (err) {
+      console.warn("[answer] Failed to load AI opponent:", err);
+    }
+
     return NextResponse.json({
       questionId,
       correct,
@@ -199,6 +258,7 @@ export async function POST(
       answerGroupSize,
       correctGroupSize,
       categoryDetails: parseCategoryDetails(row.categoryDetails),
+      aiOpponent,
     });
   } catch (error) {
     // SQLや接続情報をレスポンスに含めない（サーバーログにのみ残す）

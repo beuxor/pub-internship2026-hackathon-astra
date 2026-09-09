@@ -53,6 +53,45 @@ export function QuizResult({ result, userAnswer, onNext }: QuizResultProps) {
         </CardContent>
       </Card>
 
+      {result.aiOpponent && (
+        <Card className="border-indigo-500/30 bg-indigo-50/10">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <span>🤖 Cortex AI との対戦</span>
+                <Badge variant="outline" className="text-xs font-normal">
+                  {result.aiOpponent.model}
+                </Badge>
+              </CardTitle>
+              <span className="text-sm font-semibold">
+                {result.matchCount > result.aiOpponent.matchCount && (
+                  <span className="text-emerald-500">あなたの勝ち！ 🎉</span>
+                )}
+                {result.matchCount === result.aiOpponent.matchCount && (
+                  <span className="text-muted-foreground">引き分け 🤝</span>
+                )}
+                {result.matchCount < result.aiOpponent.matchCount && (
+                  <span className="text-amber-500">AIの勝ち 🤖</span>
+                )}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ※AI回答は同一のカテゴリTOP5ヒントから事前生成されています
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+              <span>あなた: <strong>{result.matchCount}</strong> / 3 一致</span>
+              <span>AI: <strong>{result.aiOpponent.matchCount}</strong> / 3 一致 ({result.aiOpponent.answer.ageBand}・{result.aiOpponent.answer.gender}・{result.aiOpponent.answer.marriageStatus})</span>
+            </div>
+            <div className="text-xs p-3 rounded-md bg-muted/30 border border-border/50">
+              <div className="font-semibold text-muted-foreground mb-1">AIの推論理由（仮説）:</div>
+              <p className="italic leading-relaxed">{result.aiOpponent.reasonHypothesis}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">集団の人数</CardTitle>
