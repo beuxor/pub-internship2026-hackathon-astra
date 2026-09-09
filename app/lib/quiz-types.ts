@@ -15,7 +15,7 @@ export type MarriageStatus = (typeof MARRIAGE_STATUSES)[number];
 // カテゴリランキング1件
 export interface CategoryRanking {
   rank: number;
-  categoryPath: string; // CATEGORY_LEVEL_1 + " > " + CATEGORY_LEVEL_2
+  categoryPath: string; // CATEGORY_LEVEL_1 || COALESCE(' > ' || CATEGORY_LEVEL_2, '')
 }
 
 // GET /api/question レスポンス
@@ -25,9 +25,9 @@ export interface QuestionResponse {
   period: { start: string; end: string }; // "2023-04-01" ~ "2024-03-31"
   categories: CategoryRanking[]; // TOP5
   answerOptions: {
-    ageBands: readonly string[];
-    genders: readonly string[];
-    marriageStatuses: readonly string[];
+    ageBands: readonly AgeBand[];
+    genders: readonly Gender[];
+    marriageStatuses: readonly MarriageStatus[];
   };
 }
 
@@ -43,6 +43,7 @@ export interface AnswerRequest {
 
 // POST /api/answer レスポンス
 export interface AnswerResponse {
+  questionId: string;
   correct: {
     ageBand: AgeBand;
     gender: Gender;
@@ -53,19 +54,12 @@ export interface AnswerResponse {
     gender: boolean;
     marriageStatus: boolean;
   };
-  score: {
-    matchCount: number;        // 一致した属性の数（0〜3）
-    perAttributeMatch: {       // 各属性ごとの一致/不一致
-      ageBand: boolean;
-      gender: boolean;
-      marriageStatus: boolean;
-    };
-    answerGroupSize: number;   // 回答条件に一致する顧客数
-    correctGroupSize: number;  // 正解条件に一致する顧客数
-  };
+  matchCount: number;        // 一致した属性の数（0〜3）
+  answerGroupSize: number;   // 回答条件に一致する顧客数
+  correctGroupSize: number;  // 正解条件に一致する顧客数
   categoryDetails: {
     rank: number;
     categoryPath: string;
-    buyerCount: number;
+    buyers: number;
   }[];
 }

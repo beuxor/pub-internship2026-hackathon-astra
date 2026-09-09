@@ -499,7 +499,7 @@ describe("querySnowflake: retry on terminated connection", () => {
     })
 
     const mod = await import("@/lib/snowflake")
-    querySnowflake = mod.querySnowflake
+    querySnowflake = mod.querySnowflake as typeof querySnowflake
   })
 
   afterEach(() => {
