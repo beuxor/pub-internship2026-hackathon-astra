@@ -3,6 +3,8 @@
 
 node_modules
 
+snowflake.log
+
 .cortex/plans/
 .snowflake/*
 !.snowflake/cortex/
