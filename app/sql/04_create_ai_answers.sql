@@ -36,17 +36,19 @@ WITH hints AS (
         q.DATA_VERSION,
         q.PERIOD_START,
         q.PERIOD_END,
+        q.RANKING_METHOD,
         LISTAGG(f.VALUE:rank::VARCHAR || '. ' || f.VALUE:categoryPath::VARCHAR, '\n')
           WITHIN GROUP (ORDER BY f.VALUE:rank::NUMBER) AS CATEGORY_LIST
     FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS q,
          LATERAL FLATTEN(input => q.TOP5) f
     WHERE q.IS_ACTIVE
-    GROUP BY 1, 2, 3, 4, 5, 6
+    GROUP BY 1, 2, 3, 4, 5, 6, 7
 ),
 
 answered AS (
     SELECT
         ANSWER_AGE_BAND, ANSWER_GENDER, ANSWER_MARRIAGE, DATA_VERSION,
+        PERIOD_START, PERIOD_END, RANKING_METHOD, CATEGORY_LIST,
         -- temperature 0 で再実行時のぶれを抑える（完全な決定性は保証されない）
         -- response_format の型リテラルで選択肢外の値と欠損を構造的に防ぐ
         AI_COMPLETE(
@@ -85,5 +87,9 @@ SELECT
     RAW_ANSWER                         AS RAW_ANSWER,     -- 監査用に生の応答を残す
     'day5-ai-prompt-v1'                AS PROMPT_VERSION,
     DATA_VERSION                       AS SOURCE_DATA_VERSION,
+    PERIOD_START                       AS SOURCE_PERIOD_START,
+    PERIOD_END                         AS SOURCE_PERIOD_END,
+    RANKING_METHOD                     AS SOURCE_RANKING_METHOD,
+    CATEGORY_LIST                      AS SOURCE_CATEGORY_LIST,
     CURRENT_TIMESTAMP()                AS GENERATED_AT
 FROM answered;

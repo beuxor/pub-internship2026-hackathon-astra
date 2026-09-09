@@ -27,8 +27,22 @@
 -- 期間やカテゴリキーの定義が変わって問題バンクを作り直した場合、AIが見たヒントと
 -- プレイヤーが見るヒントがずれる。照合しないとJOINは通り、古い前提のAI回答を
 -- 黙って返してしまう。バージョンが合わなければ0行になり「AI対戦なし」に落ちる。
--- 04 を再実行すれば解消する。
+-- DATA_VERSION は固定値なので、それだけでは変更を検出できない。
+-- AIが見た期間・ランキング定義・順位付きカテゴリのスナップショットも完全一致させる。
+-- IDだけの再生成、buyersだけの変更は公開ヒントに影響しないので一致を維持する。
+-- Q6も同じ条件で集計する。04 を再実行すれば新しいヒントの回答を生成できる。
 -- -----------------------------------------------------------------------------
+WITH current_questions AS (
+    SELECT q.QUESTION_ID, q.ANSWER_AGE_BAND, q.ANSWER_GENDER,
+           q.ANSWER_MARRIAGE, q.DATA_VERSION, q.PERIOD_START, q.PERIOD_END,
+           q.RANKING_METHOD,
+           LISTAGG(f.VALUE:rank::VARCHAR || '. ' || f.VALUE:categoryPath::VARCHAR, '\n')
+             WITHIN GROUP (ORDER BY f.VALUE:rank::NUMBER) AS CATEGORY_LIST
+    FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS q,
+         LATERAL FLATTEN(input => q.TOP5) f
+    WHERE q.IS_ACTIVE
+    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+)
 SELECT
     q.QUESTION_ID                                            AS "questionId",
     a.MODEL                                                  AS "model",
@@ -46,29 +60,52 @@ SELECT
     + IFF(a.AI_MARRIAGE  = q.ANSWER_MARRIAGE,  1, 0)         AS "aiMatchCount",
     -- 事前生成であることを画面に出すために返す
     a.GENERATED_AT::VARCHAR                                  AS "aiAnsweredAt"
-FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS q
+FROM current_questions q
 JOIN TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_AI_ANSWERS a
   ON  a.ANSWER_AGE_BAND     = q.ANSWER_AGE_BAND
   AND a.ANSWER_GENDER       = q.ANSWER_GENDER
   AND a.ANSWER_MARRIAGE     = q.ANSWER_MARRIAGE
   AND a.SOURCE_DATA_VERSION = q.DATA_VERSION
-WHERE q.QUESTION_ID = ?
-  AND q.IS_ACTIVE;
+  AND a.SOURCE_PERIOD_START = q.PERIOD_START
+  AND a.SOURCE_PERIOD_END = q.PERIOD_END
+  AND a.SOURCE_RANKING_METHOD = q.RANKING_METHOD
+  AND a.SOURCE_CATEGORY_LIST = q.CATEGORY_LIST
+WHERE q.QUESTION_ID = ?;
 
 -- -----------------------------------------------------------------------------
 -- [#13] Q6: AI全体の成績（結果画面や発表で「AIは18問中どうだったか」を出す用）
 --
 -- bind: なし
 -- -----------------------------------------------------------------------------
+WITH current_questions AS (
+    SELECT q.QUESTION_ID, q.ANSWER_AGE_BAND, q.ANSWER_GENDER,
+           q.ANSWER_MARRIAGE, q.DATA_VERSION, q.PERIOD_START, q.PERIOD_END,
+           q.RANKING_METHOD,
+           LISTAGG(f.VALUE:rank::VARCHAR || '. ' || f.VALUE:categoryPath::VARCHAR, '\n')
+             WITHIN GROUP (ORDER BY f.VALUE:rank::NUMBER) AS CATEGORY_LIST
+    FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS q,
+         LATERAL FLATTEN(input => q.TOP5) f
+    WHERE q.IS_ACTIVE
+    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+)
 SELECT
-    MODEL                                                    AS "model",
-    COUNT(*)                                                 AS "questionCount",
-    SUM(IFF(AI_AGE_BAND  = ANSWER_AGE_BAND,  1, 0)
-      + IFF(AI_GENDER    = ANSWER_GENDER,    1, 0)
-      + IFF(AI_MARRIAGE  = ANSWER_MARRIAGE,  1, 0))          AS "aiTotalMatches",
-    COUNT(*) * 3                                             AS "maxPossibleMatches",
-    COUNT_IF(AI_AGE_BAND  = ANSWER_AGE_BAND)                 AS "aiAgeBandCorrect",
-    COUNT_IF(AI_GENDER    = ANSWER_GENDER)                   AS "aiGenderCorrect",
-    COUNT_IF(AI_MARRIAGE  = ANSWER_MARRIAGE)                 AS "aiMarriageCorrect"
-FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_AI_ANSWERS
-GROUP BY MODEL;
+    a.MODEL AS "model",
+    COUNT(*) AS "questionCount",
+    SUM(IFF(a.AI_AGE_BAND = q.ANSWER_AGE_BAND, 1, 0)
+      + IFF(a.AI_GENDER = q.ANSWER_GENDER, 1, 0)
+      + IFF(a.AI_MARRIAGE = q.ANSWER_MARRIAGE, 1, 0)) AS "aiTotalMatches",
+    COUNT(*) * 3 AS "maxPossibleMatches",
+    COUNT_IF(a.AI_AGE_BAND = q.ANSWER_AGE_BAND) AS "aiAgeBandCorrect",
+    COUNT_IF(a.AI_GENDER = q.ANSWER_GENDER) AS "aiGenderCorrect",
+    COUNT_IF(a.AI_MARRIAGE = q.ANSWER_MARRIAGE) AS "aiMarriageCorrect"
+FROM current_questions q
+JOIN TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_AI_ANSWERS a
+  ON  a.ANSWER_AGE_BAND     = q.ANSWER_AGE_BAND
+  AND a.ANSWER_GENDER       = q.ANSWER_GENDER
+  AND a.ANSWER_MARRIAGE     = q.ANSWER_MARRIAGE
+  AND a.SOURCE_DATA_VERSION = q.DATA_VERSION
+  AND a.SOURCE_PERIOD_START = q.PERIOD_START
+  AND a.SOURCE_PERIOD_END = q.PERIOD_END
+  AND a.SOURCE_RANKING_METHOD = q.RANKING_METHOD
+  AND a.SOURCE_CATEGORY_LIST = q.CATEGORY_LIST
+GROUP BY a.MODEL;
