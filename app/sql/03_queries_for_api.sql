@@ -38,8 +38,10 @@ LIMIT 1;
 -- -----------------------------------------------------------------------------
 -- [#11] Q1b: 出題済みを除外して新規出題（Q1の変種）
 --
--- bind: [excludedQuestionIds]  … 文字列配列を1つ渡す（例: []、["id1","id2"]）
--- 空配列を渡せば Q1 と同じ挙動になる。
+-- Node.js SDK: binds: [JSON.stringify(excludedQuestionIds)]
+-- excludedQuestionIds は文字列配列（例: []、["id1","id2"]）。
+-- PARSE_JSON(?) に渡すため、配列を直接bindせずJSON文字列に変換する。
+-- 空配列も JSON.stringify([]) で渡せば Q1 と同じ挙動になる。
 -- -----------------------------------------------------------------------------
 SELECT
     QUESTION_ID                                  AS "questionId",
