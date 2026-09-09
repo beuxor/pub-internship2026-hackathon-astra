@@ -11,13 +11,16 @@ export function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background text-foreground">
       <div className="w-full px-4 h-14 flex items-center gap-3">
         {LOGO_SRC && (
-          <Image
-            src={LOGO_SRC}
-            alt={`${APP_TITLE} logo`}
-            width={28}
-            height={28}
-            className="shrink-0"
-          />
+          // Full navigation resets the quiz state even when already on `/`.
+          // eslint-disable-next-line @next/next/no-html-link-for-pages
+          <a href="/" aria-label="トップページに戻る" className="shrink-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+            <Image
+              src={LOGO_SRC}
+              alt={`${APP_TITLE} logo`}
+              width={28}
+              height={28}
+            />
+          </a>
         )}
         <span className="text-sm font-semibold tracking-tight">
           {APP_TITLE}
