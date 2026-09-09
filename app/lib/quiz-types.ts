@@ -1,3 +1,7 @@
+// クイズモード
+export const QUIZ_MODES = ["group", "individual"] as const;
+export type QuizMode = (typeof QUIZ_MODES)[number];
+
 // 年代区分（FLOOR(AGE/10)*10 で算出。0代・70代以上は出題対象外）
 export const AGE_BANDS = [
   "10代", "20代", "30代", "40代", "50代", "60代",

@@ -7,6 +7,7 @@ import type {
   AgeBand,
   Gender,
   MarriageStatus,
+  QuizMode,
 } from "@/lib/quiz-types";
 import { QuizStart } from "@/components/quiz-start";
 import { QuizQuestion } from "@/components/quiz-question";
@@ -18,16 +19,19 @@ type Phase = "start" | "loading-question" | "question" | "submitting" | "result"
 
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("start");
+  const [mode, setMode] = useState<QuizMode | null>(null);
   const [question, setQuestion] = useState<QuestionResponse | null>(null);
   const [result, setResult] = useState<AnswerResponse | null>(null);
   const [userAnswer, setUserAnswer] = useState<{ ageBand: AgeBand; gender: Gender; marriageStatus: MarriageStatus } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchQuestion() {
+  async function fetchQuestion(selectedMode?: QuizMode) {
+    const m = selectedMode ?? mode;
+    if (!m) return;
     setError(null);
     setPhase("loading-question");
     try {
-      const res = await fetch("/api/question", { cache: "no-store" });
+      const res = await fetch(`/api/question?mode=${m}`, { cache: "no-store" });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? `HTTP ${res.status}`);
@@ -65,6 +69,11 @@ export default function Home() {
     }
   }
 
+  function handleStart(selectedMode: QuizMode) {
+    setMode(selectedMode);
+    fetchQuestion(selectedMode);
+  }
+
   function handleNext() {
     setQuestion(null);
     setResult(null);
@@ -82,7 +91,7 @@ export default function Home() {
         </div>
       )}
 
-      {phase === "start" && <QuizStart onStart={fetchQuestion} />}
+      {phase === "start" && <QuizStart onStart={handleStart} />}
 
       {phase === "loading-question" && (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto px-4 py-8">
