@@ -34,8 +34,11 @@ WITH cust AS (
 
 grp AS (
     -- 集団人数。カテゴリ不明の購買しかない顧客も必ず含める。
-    -- （対象19集団で796人が該当。ランキングには寄与しないが集団の一員）
-    SELECT AGE_BAND, GENDER, MARRIAGE, COUNT(*) AS GROUP_SIZE
+    -- （対象18集団で796人が該当。ランキングには寄与しないが集団の一員）
+    -- COUNT(DISTINCT USER_ID_HASH) で数える。#14 の人数定義と揃えるため。
+    -- 現データに顧客重複は無い（70,113行 = 70,113 distinct）が、重複が入ると
+    -- 500人の出題条件と衝突時に残す集団の選択まで狂うので定義で防ぐ。
+    SELECT AGE_BAND, GENDER, MARRIAGE, COUNT(DISTINCT USER_ID_HASH) AS GROUP_SIZE
     FROM cust
     GROUP BY 1, 2, 3
 ),

@@ -17,13 +17,32 @@ USE WAREHOUSE TEAM_A_WH;
 SELECT
     COUNT(*)                                          AS QUESTIONS,
     COUNT(DISTINCT ANSWER_AGE_BAND || ANSWER_GENDER || ANSWER_MARRIAGE) AS DISTINCT_GROUPS,
-    COUNT(DISTINCT TO_VARCHAR(TOP5))                  AS DISTINCT_TOP5,
+    -- 署名は「順位＋カテゴリ名」だけで作る。buyers を含めてはいけない。
+    -- buyers を含めると、同じカテゴリ・同じ並び順でも購入者数が違えば
+    -- 別問題として数えられ、プレイヤーには見分けられない重複が検算を通過する。
+    -- 生成側 (01の dedup) の衝突定義と一致させる。
+    COUNT(DISTINCT ARRAY_TO_STRING(
+        TRANSFORM(TOP5, o OBJECT -> o:categoryPath::VARCHAR), ' | '))    AS DISTINCT_TOP5,
     SUM(ANSWER_GROUP_SIZE)                            AS COVERED_CUSTOMERS,
     MIN(ANSWER_GROUP_SIZE)                            AS MIN_GROUP_SIZE,
     MAX(ANSWER_GROUP_SIZE)                            AS MAX_GROUP_SIZE,
     BOOLAND_AGG(ARRAY_SIZE(TOP5) = 5)                 AS ALWAYS_5_CATEGORIES,
     COUNT(DISTINCT QUESTION_ID) = COUNT(*)            AS UNIQUE_IDS
 FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS;
+
+-- -----------------------------------------------------------------------------
+-- 検算1b: プレイヤーに見分けられない重複が無いか（順位＋カテゴリ名のみで判定）
+--   期待: 0行。1行でも返ったら、同じTOP5表示で正解が複数ある問題が残っている。
+--   buyers だけが違うケースもここで検出される（表示には出ないため重複扱い）。
+-- -----------------------------------------------------------------------------
+SELECT
+    ARRAY_TO_STRING(TRANSFORM(TOP5, o OBJECT -> o:categoryPath::VARCHAR), ' | ') AS TOP5_SIG,
+    COUNT(*)                                                     AS N_QUESTIONS,
+    LISTAGG(ANSWER_AGE_BAND || '/' || ANSWER_GENDER || '/' || ANSWER_MARRIAGE
+            || '(' || ANSWER_GROUP_SIZE || '人)', ' , ')          AS COLLIDING_ANSWERS
+FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS
+GROUP BY 1
+HAVING COUNT(*) > 1;
 
 -- -----------------------------------------------------------------------------
 -- 検算2: 正解の値が選択肢の範囲に収まっているか
@@ -59,7 +78,7 @@ WITH expected AS (
         (FLOOR(AGE/10)*10)::VARCHAR || '代' AS AGE_BAND,
         GENDER_NAME  AS GENDER,
         MARRIAGE_STATUS AS MARRIAGE,
-        COUNT(*)     AS EXPECTED_SIZE
+        COUNT(DISTINCT USER_ID_HASH) AS EXPECTED_SIZE   -- 01と#14の人数定義に揃える
     FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED
     WHERE AGE IS NOT NULL
       AND GENDER_NAME     IN ('男性','女性')

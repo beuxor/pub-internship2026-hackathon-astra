@@ -12,10 +12,14 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- [#11] Q1: 5問セットをまとめて取得（公開情報のみ）
+-- [#11] Q1: 新規出題（公開情報のみ、1問）
 --
--- 固定5問セットなので、1回で5問取る方が出題の重複制御を持たなくて済む。
+-- `QuestionResponse` は1問の契約なので LIMIT 1。
 -- TRANSFORM で buyers を落としているので、この結果をそのまま返しても漏れない。
+--
+-- 【注意】1問ずつランダムに引くので、同じセッション内で同じ問題が再出題され得る。
+-- 出題済みを避けたい場合は下の除外版を使う（バンクは18問しかないため、
+-- 5問セットなら除外しないと重複が現実的に起きる）。
 -- -----------------------------------------------------------------------------
 SELECT
     QUESTION_ID                                  AS "questionId",
@@ -29,7 +33,28 @@ SELECT
 FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS
 WHERE IS_ACTIVE
 ORDER BY RANDOM()
-LIMIT 5;
+LIMIT 1;
+
+-- -----------------------------------------------------------------------------
+-- [#11] Q1b: 出題済みを除外して新規出題（Q1の変種）
+--
+-- bind: [excludedQuestionIds]  … 文字列配列を1つ渡す（例: []、["id1","id2"]）
+-- 空配列を渡せば Q1 と同じ挙動になる。
+-- -----------------------------------------------------------------------------
+SELECT
+    QUESTION_ID                                  AS "questionId",
+    RANKING_METHOD                               AS "rankingMethod",
+    PERIOD_START::VARCHAR                        AS "periodStart",
+    PERIOD_END::VARCHAR                          AS "periodEnd",
+    TRANSFORM(
+        TOP5,
+        o OBJECT -> OBJECT_CONSTRUCT('rank', o:rank, 'categoryPath', o:categoryPath)
+    )                                            AS "categories"
+FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS
+WHERE IS_ACTIVE
+  AND NOT ARRAY_CONTAINS(QUESTION_ID::VARIANT, TO_ARRAY(PARSE_JSON(?)))
+ORDER BY RANDOM()
+LIMIT 1;
 
 -- -----------------------------------------------------------------------------
 -- [#11] Q2: questionId を指定して1問だけ取得（公開情報のみ）
@@ -77,7 +102,7 @@ WHERE IS_ACTIVE
 -- 集団の定義は顧客表が正本。カテゴリ不明の顧客も含める。
 -- bind: [ageBand, gender, marriageStatus]
 -- -----------------------------------------------------------------------------
-SELECT COUNT(*) AS "answerGroupSize"
+SELECT COUNT(DISTINCT USER_ID_HASH) AS "answerGroupSize"
 FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED
 WHERE AGE IS NOT NULL
   AND GENDER_NAME     IN ('男性', '女性')
@@ -95,12 +120,14 @@ WHERE AGE IS NOT NULL
 -- 下のクエリで実数を確認できる。ハードコードする前に実行して照合すること。
 -- -----------------------------------------------------------------------------
 SELECT
-    (SELECT COUNT(*) FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED)        AS "totalCustomers",
+    (SELECT COUNT(DISTINCT USER_ID_HASH)
+       FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED)                   AS "totalCustomers",
     (SELECT SUM(ANSWER_GROUP_SIZE)
        FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS WHERE IS_ACTIVE)     AS "coveredCustomers",
     ROUND(
         100.0 * (SELECT SUM(ANSWER_GROUP_SIZE)
                    FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS WHERE IS_ACTIVE)
-        / (SELECT COUNT(*) FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED), 1
+        / (SELECT COUNT(DISTINCT USER_ID_HASH)
+             FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED), 1
     )                                                                      AS "coveredPct",
     (SELECT COUNT(*) FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS WHERE IS_ACTIVE) AS "questionCount";
