@@ -11,7 +11,7 @@ export async function GET(): Promise<NextResponse<QuestionResponse | { error: st
 
     const response: QuestionResponse = {
       questionId: q.questionId,
-      rankingMethod: "sales_total",
+      rankingMethod: "buyer_count",
       period: q.period,
       categories: q.categories.map(({ rank, categoryPath }) => ({
         rank,

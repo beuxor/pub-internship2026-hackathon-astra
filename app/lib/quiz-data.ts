@@ -13,7 +13,7 @@ export interface InternalQuestion {
   correctAgeBand: AgeBand;
   correctGender: Gender;
   correctMarriageStatus: MarriageStatus;
-  categories: (CategoryRanking & { totalSales: number })[];
+  categories: (CategoryRanking & { buyerCount: number })[];
   period: { start: string; end: string };
   createdAt: number;
 }
@@ -42,47 +42,54 @@ function pickRandomAttributes(): {
   return { ageBand, gender, marriageStatus };
 }
 
-// 指定属性の集団に対するカテゴリTOP5を取得
+// 年代文字列からSQLのWHERE条件用の10の位を取得
+function ageBandToDecade(ageBand: AgeBand): number {
+  return parseInt(ageBand, 10); // "10代" → 10, "20代" → 20, ...
+}
+
+// 指定属性の集団に対するカテゴリTOP5を購入者数で取得
 async function fetchTop5Categories(
   ageBand: AgeBand,
   gender: Gender,
   marriageStatus: MarriageStatus,
-): Promise<(CategoryRanking & { totalSales: number })[]> {
+): Promise<(CategoryRanking & { buyerCount: number })[]> {
+  const decade = ageBandToDecade(ageBand);
+
   const sql = `
     WITH target AS (
       SELECT USER_ID_HASH
       FROM TEAM_A_DB.DEVELOPMENT.INT_USERS_ENRICHED
-      WHERE AGE_CATEGORY = ?
+      WHERE FLOOR(AGE / 10) * 10 = ?
         AND GENDER_NAME = ?
         AND MARRIAGE_STATUS = ?
     ),
-    sales AS (
+    purchases AS (
       SELECT
         d.CATEGORY_LEVEL_1 || ' > ' || d.CATEGORY_LEVEL_2 AS category_path,
-        SUM(d.TOTAL_PRICE) AS total_sales
+        d.USER_ID_HASH
       FROM TEAM_A_DB.DEVELOPMENT.MART_RAKUTEN_EC_DAIFUKUCHO d
       INNER JOIN target t ON d.USER_ID_HASH = t.USER_ID_HASH
       WHERE d.PURCHASED_AT >= ?
         AND d.PURCHASED_AT < '2024-04-01'
         AND d.CATEGORY_LEVEL_1 IS NOT NULL
         AND d.CATEGORY_LEVEL_2 IS NOT NULL
-      GROUP BY category_path
     )
-    SELECT category_path, total_sales
-    FROM sales
-    ORDER BY total_sales DESC, category_path ASC
+    SELECT category_path, COUNT(DISTINCT USER_ID_HASH) AS buyer_count
+    FROM purchases
+    GROUP BY category_path
+    ORDER BY buyer_count DESC, category_path ASC
     LIMIT 5
   `;
 
   const rows = await querySnowflakeLongRunning(sql, {
-    binds: [ageBand, gender, marriageStatus, PERIOD_START],
+    binds: [decade, gender, marriageStatus, PERIOD_START],
     warehouse: WAREHOUSE,
-  }) as { CATEGORY_PATH: string; TOTAL_SALES: number }[];
+  }) as { CATEGORY_PATH: string; BUYER_COUNT: number }[];
 
   return rows.map((row, i) => ({
     rank: i + 1,
     categoryPath: row.CATEGORY_PATH,
-    totalSales: row.TOTAL_SALES,
+    buyerCount: row.BUYER_COUNT,
   }));
 }
 
