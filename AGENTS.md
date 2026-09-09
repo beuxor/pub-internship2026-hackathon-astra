@@ -1,3 +1,4 @@
+
 # Cortex Code project instructions
 
 This repository is Team Astra's workspace for the DATUM STUDIO 2026 summer internship Day 5 hackathon.
@@ -48,4 +49,3 @@ When developing full-stack web applications on Snowflake App Runtime:
 - `CORTEX_IDEATION_PROMPT.md`: the exact first assignment to execute.
 - `/Users/daisukeyamashiki/Code/Inbox/DATUM_STUDIO/Res/markdown/05_インターン5日目/05_インターン5日目.md`: converted official Day 5 slides.
 - `/Users/daisukeyamashiki/Code/Inbox/DATUM_STUDIO/day4-local/sis_app.py`: Day 4 dashboard reference; do not treat it as Day 5 source code.
-
