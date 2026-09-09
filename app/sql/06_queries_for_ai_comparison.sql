@@ -22,6 +22,12 @@
 -- bind: [questionId]
 --
 -- 結合は属性3つ組で行う。QUESTION_ID では紐付けない（04 の注記を参照）。
+--
+-- SOURCE_DATA_VERSION も突き合わせる。属性3つ組は再生成に対して安定だが、
+-- 期間やカテゴリキーの定義が変わって問題バンクを作り直した場合、AIが見たヒントと
+-- プレイヤーが見るヒントがずれる。照合しないとJOINは通り、古い前提のAI回答を
+-- 黙って返してしまう。バージョンが合わなければ0行になり「AI対戦なし」に落ちる。
+-- 04 を再実行すれば解消する。
 -- -----------------------------------------------------------------------------
 SELECT
     q.QUESTION_ID                                            AS "questionId",
@@ -42,9 +48,10 @@ SELECT
     a.GENERATED_AT::VARCHAR                                  AS "aiAnsweredAt"
 FROM TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_QUESTIONS q
 JOIN TEAM_A_DB.DEVELOPMENT.DAY5_QUIZ_AI_ANSWERS a
-  ON  a.ANSWER_AGE_BAND = q.ANSWER_AGE_BAND
-  AND a.ANSWER_GENDER   = q.ANSWER_GENDER
-  AND a.ANSWER_MARRIAGE = q.ANSWER_MARRIAGE
+  ON  a.ANSWER_AGE_BAND     = q.ANSWER_AGE_BAND
+  AND a.ANSWER_GENDER       = q.ANSWER_GENDER
+  AND a.ANSWER_MARRIAGE     = q.ANSWER_MARRIAGE
+  AND a.SOURCE_DATA_VERSION = q.DATA_VERSION
 WHERE q.QUESTION_ID = ?
   AND q.IS_ACTIVE;
 
