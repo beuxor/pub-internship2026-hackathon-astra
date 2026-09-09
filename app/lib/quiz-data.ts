@@ -13,7 +13,7 @@ export interface InternalQuestion {
   correctAgeBand: AgeBand;
   correctGender: Gender;
   correctMarriageStatus: MarriageStatus;
-  categories: (CategoryRanking & { buyerCount: number })[];
+  categories: (CategoryRanking & { buyers: number })[];
   period: { start: string; end: string };
   createdAt: number;
 }
@@ -52,7 +52,7 @@ async function fetchTop5Categories(
   ageBand: AgeBand,
   gender: Gender,
   marriageStatus: MarriageStatus,
-): Promise<(CategoryRanking & { buyerCount: number })[]> {
+): Promise<(CategoryRanking & { buyers: number })[]> {
   const decade = ageBandToDecade(ageBand);
 
   const sql = `
@@ -65,7 +65,7 @@ async function fetchTop5Categories(
     ),
     purchases AS (
       SELECT
-        d.CATEGORY_LEVEL_1 || ' > ' || d.CATEGORY_LEVEL_2 AS category_path,
+        d.CATEGORY_LEVEL_1 || COALESCE(' > ' || d.CATEGORY_LEVEL_2, '') AS category_path,
         d.USER_ID_HASH
       FROM TEAM_A_DB.DEVELOPMENT.MART_RAKUTEN_EC_DAIFUKUCHO d
       INNER JOIN target t ON d.USER_ID_HASH = t.USER_ID_HASH
@@ -89,7 +89,7 @@ async function fetchTop5Categories(
   return rows.map((row, i) => ({
     rank: i + 1,
     categoryPath: row.CATEGORY_PATH,
-    buyerCount: row.BUYER_COUNT,
+    buyers: row.BUYER_COUNT,
   }));
 }
 
